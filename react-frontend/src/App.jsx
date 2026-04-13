@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import './App.css'
 
 function App() {
@@ -8,6 +9,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState('content')
 
   // Cleanup object URL
   useEffect(() => {
@@ -140,70 +142,123 @@ function App() {
           </div>
         </div>
 
-        <button className="primary-btn" style={{ marginTop: '40px' }} onClick={() => { setResult(null); setFileUrl(null); }}>
+        <div className="tab-menu" style={{ marginTop: '30px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <button 
+            className={`tab-btn ${activeTab === 'content' ? 'active' : ''}`}
+            onClick={() => setActiveTab('content')}
+          >
+            📊 Analysis Overview
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'suggestions' ? 'active' : ''}`}
+            onClick={() => setActiveTab('suggestions')}
+          >
+            ✨ AI Resume Suggestions
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'roadmap' ? 'active' : ''}`}
+            onClick={() => setActiveTab('roadmap')}
+          >
+            🗺️ Learning Roadmap
+          </button>
+        </div>
+
+        <button className="primary-btn outline" style={{ marginTop: '20px', background: 'transparent', border: '2px solid #cbd5e0', color: '#4a5568', boxShadow: 'none' }} onClick={() => { setResult(null); setFileUrl(null); setActiveTab('content'); }}>
           Start New Scan
         </button>
       </aside>
 
       {/* MAIN CONTENT */}
       <main className="main-content">
-        <div className="content-header">
-          <h1><span style={{ color: '#6b46c1' }}>🎯</span> CONTENT</h1>
-          <div className="top-action-btn">{issuesCount} issues found</div>
-        </div>
-
-        {/* ATS OVERLAP CARD */}
-        <div className="info-card">
-          <h3>ATS PARSE OVERLAP</h3>
-          <p>
-            An <strong>Applicant Tracking System</strong> commonly referred to as <strong>ATS</strong> is a system used by employers to quickly scan job applications.
-            <br /><br />
-            A high parse rate ensures the system recognizes your skills. We identified exactly <strong>{result.matched_skills.length} core keywords</strong> from your resume that directly align with the job posting!
-          </p>
-
-          <div className="progress-bar-container">
-            <div className="progress-bar-fill" style={{ width: `${result.ats_score}%`, backgroundColor: scoreColor }}></div>
-            <div className="progress-marker" style={{ left: `${result.ats_score}%`, backgroundColor: scoreColor, borderColor: scoreColor }}>
-              {result.ats_score}%
+        
+        {activeTab === 'content' && (
+          <div className="tab-content fade-in">
+            <div className="content-header">
+              <h1><span style={{ color: '#6b46c1' }}>🎯</span> CONTENT</h1>
+              <div className="top-action-btn">{issuesCount} issues found</div>
             </div>
-          </div>
-        </div>
 
-        {/* MISSING SKILLS CARD */}
-        {issuesCount > 0 && (
-          <div className="info-card" style={{ borderLeft: '4px solid #fc8181' }}>
-            <h3>⚠️ MISSING RECOMMENDED SKILLS</h3>
-            <p>
-              Your resume does not explicitly mention the following standard keywords that were requested in the Job Description.
-              Adding these (if you possess them) will significantly jump your ATS score.
-            </p>
-            <div className="missing-chips">
-              {result.missing_skills.map((skill, index) => (
-                <span key={index} className="badge error" style={{ fontSize: '0.9rem', padding: '6px 14px' }}>{skill}</span>
-              ))}
+            {/* ATS OVERLAP CARD */}
+            <div className="info-card">
+              <h3>ATS PARSE OVERLAP</h3>
+              <p>
+                An <strong>Applicant Tracking System</strong> commonly referred to as <strong>ATS</strong> is a system used by employers to quickly scan job applications.
+                <br /><br />
+                A high parse rate ensures the system recognizes your skills. We identified exactly <strong>{result.matched_skills.length} core keywords</strong> from your resume that directly align with the job posting!
+              </p>
+
+              <div className="progress-bar-container">
+                <div className="progress-bar-fill" style={{ width: `${result.ats_score}%`, backgroundColor: scoreColor }}></div>
+                <div className="progress-marker" style={{ left: `${result.ats_score}%`, backgroundColor: scoreColor, borderColor: scoreColor }}>
+                  {result.ats_score}%
+                </div>
+              </div>
+            </div>
+
+            {/* MISSING SKILLS CARD */}
+            {issuesCount > 0 && (
+              <div className="info-card" style={{ borderLeft: '4px solid #fc8181' }}>
+                <h3>⚠️ MISSING RECOMMENDED SKILLS</h3>
+                <p>
+                  Your resume does not explicitly mention the following standard keywords that were requested in the Job Description.
+                  Adding these (if you possess them) will significantly jump your ATS score.
+                </p>
+                <div className="missing-chips">
+                  {result.missing_skills.map((skill, index) => (
+                    <span key={index} className="badge error" style={{ fontSize: '0.9rem', padding: '6px 14px' }}>{skill}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* MATCHED SKILLS CARD */}
+            {result.matched_skills.length > 0 && (
+              <div className="info-card" style={{ borderLeft: '4px solid #68d391' }}>
+                <h3>✅ VALIDATED EXPERTISE</h3>
+                <p>Great job! You successfully included these critical industry keywords:</p>
+                <div className="missing-chips">
+                  {result.matched_skills.map((skill, index) => (
+                    <span key={index} className="badge success" style={{ fontSize: '0.9rem', padding: '6px 14px', background: '#f0fff4' }}>{skill}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* LIVE PDF PREVIEW */}
+            {fileUrl && (
+              <div className="info-card" style={{ padding: 0, overflow: 'hidden' }}>
+                <h3 style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', margin: 0, background: '#f8fafc' }}>📄 DOCUMENT PREVIEW</h3>
+                <div className="preview-container" style={{ marginTop: 0, border: 'none', borderRadius: 0 }}>
+                  <iframe src={fileUrl} title="Resume Preview"></iframe>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'suggestions' && (
+          <div className="tab-content fade-in">
+            <div className="content-header">
+              <h1><span style={{ color: '#d69e2e' }}>✨</span> AI RESUME SUGGESTIONS</h1>
+            </div>
+            
+            <div className="info-card markdown-body" style={{ borderTop: '4px solid #ecc94b' }}>
+              <ReactMarkdown>{result.llm_improvements}</ReactMarkdown>
             </div>
           </div>
         )}
 
-        {/* MATCHED SKILLS CARD */}
-        {result.matched_skills.length > 0 && (
-          <div className="info-card" style={{ borderLeft: '4px solid #68d391' }}>
-            <h3>✅ VALIDATED EXPERTISE</h3>
-            <p>Great job! You successfully included these critical industry keywords:</p>
-            <div className="missing-chips">
-              {result.matched_skills.map((skill, index) => (
-                <span key={index} className="badge success" style={{ fontSize: '0.9rem', padding: '6px 14px', background: '#f0fff4' }}>{skill}</span>
-              ))}
+        {activeTab === 'roadmap' && (
+          <div className="tab-content fade-in">
+            <div className="content-header">
+              <h1><span style={{ color: '#3182ce' }}>🗺️</span> LEARNING ROADMAP</h1>
             </div>
-          </div>
-        )}
-
-        {/* LIVE PDF PREVIEW */}
-        {fileUrl && (
-          <div className="info-card" style={{ padding: 0, overflow: 'hidden' }}>
-            <h3 style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', margin: 0, background: '#f8fafc' }}>📄 DOCUMENT PREVIEW</h3>
-            <div className="preview-container" style={{ marginTop: 0, border: 'none', borderRadius: 0 }}>
-              <iframe src={fileUrl} title="Resume Preview"></iframe>
+            
+            <div className="info-card markdown-body" style={{ borderTop: '4px solid #63b3ed' }}>
+              <p style={{ color: '#718096', marginBottom: '20px', fontStyle: 'italic' }}>
+                Based on the missing skills identified from the job description, our AI has generated a customized beginner-to-advanced learning roadmap to help you bridge the gap.
+              </p>
+              <ReactMarkdown>{result.llm_roadmap}</ReactMarkdown>
             </div>
           </div>
         )}
