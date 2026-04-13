@@ -5,7 +5,9 @@ from app.db.models import AnalysisHistory
 from app.services.extraction import extract_text
 from app.services.matching import calculate_ats_score, extract_keywords
 from app.services.feedback import generate_feedback
+from app.services.llm_service import get_resume_improvements, generate_skill_roadmap
 import json
+import asyncio
 
 router = APIRouter()
 
@@ -24,19 +26,33 @@ async def analyze_resume(
         resume_keywords = extract_keywords(resume_text)
         jd_keywords = extract_keywords(job_description)
         
-        # 3. Calculate Score
-        score = calculate_ats_score(resume_text, job_description)
+        # 3. Calculate Advanced Score
+        score_data = calculate_ats_score(resume_text, job_description)
+        final_score = score_data["final_score"]
+        score_breakdown = score_data["breakdown"]
+        semantic_sim = score_data["raw_semantic_similarity"]
         
-        # 4. Generate Feedback
+        # 4. Generate Feedback (Missing/Matched)
         feedback = generate_feedback(resume_keywords, jd_keywords)
+        missing_skills = feedback["missing_skills"]
         
-        # 5. Save to DB
+        # 5. LLM Enhancements Concurrent API calls for speed
+        llm_improvements, llm_roadmap = await asyncio.gather(
+            get_resume_improvements(resume_text, job_description),
+            generate_skill_roadmap(missing_skills)
+        )
+        
+        # 6. Save to DB
         history_record = AnalysisHistory(
             filename=file.filename,
             job_description=job_description,
-            ats_score=score,
+            ats_score=final_score,
+            semantic_match_score=semantic_sim,
             matched_skills=json.dumps(feedback["matched_skills"]),
-            missing_skills=json.dumps(feedback["missing_skills"])
+            missing_skills=json.dumps(missing_skills),
+            score_breakdown=json.dumps(score_breakdown),
+            improvement_suggestions=json.dumps(llm_improvements),
+            skill_roadmap=json.dumps(llm_roadmap)
         )
         db.add(history_record)
         db.commit()
@@ -45,10 +61,14 @@ async def analyze_resume(
         return {
             "id": history_record.id,
             "filename": file.filename,
-            "ats_score": score,
+            "ats_score": final_score,
+            "score_breakdown": score_breakdown,
+            "semantic_match_score": semantic_sim,
             "matched_skills": feedback["matched_skills"],
-            "missing_skills": feedback["missing_skills"],
-            "suggestions": feedback["suggestions"]
+            "missing_skills": missing_skills,
+            "suggestions": feedback["suggestions"],
+            "llm_improvements": llm_improvements,
+            "llm_roadmap": llm_roadmap
         }
         
     except ValueError as e:
